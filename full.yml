@@ -1,0 +1,276 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: gamma-eks-dev
+  region: ap-southeast-2
+
+nodeGroups:
+  - name: gamma-nodes-dev
+    instanceType: t2.medium
+    desiredCapacity: 2
+    minSize: 1
+    maxSize: 2
+    volumeSize: 20
+    ssh:
+      enableSsm: true
+
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+    EKS Cluster Process:
+  - Install eksctl inside ec2 instance
+  - eksctl Install:
+    - curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+    - sudo mv /tmp/eksctl /usr/local/bin
+    - eksctl version
+
+  - Crate IAM Role for ec2 instance with Admin Permission
+  - eksctl create cluster -f cluter.yml
+  - kubectl download:
+    - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    - chmod +x kubectl
+    - mv kubectl /usr/bin/
+
+  - kubectl get svc
+    NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+    kubernetes   ClusterIP   10.100.0.1   <none>        443/TCP   11m
+  
+    kubens - downlod from google
+    tar -xvf tar -xvf kubens_v0.9.5_linux_x86_64.tar.gz
+
+  - delete cluster:
+    - eksctl delete cluster -f gamma-cluster.yml
+
+---
+#Home
+FROM nginx:latest
+RUN echo "<h1>Welcome to Home Page Of this Application</h1>" > /usr/share/nginx/html/index.html
+
+#Laptop
+FROM nginx:latest
+RUN mkdir /usr/share/nginx/html/laptop/
+RUN echo "<h1>Welcome to laptop Page Of this Application</h1>" > /usr/share/nginx/html/laptop/index.html
+
+#Mobile
+FROM nginx:latest
+RUN mkdir /usr/share/nginx/html/mobile/
+RUN echo "<h1>Welcome to Mobile Page Of this Application</h1>" > /usr/share/nginx/html/mobile/index.html
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home
+  labels:
+    app: home
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: home
+  template:
+    metadata:
+      labels:
+        app: home
+    spec:
+      containers:
+      - name: home
+        image: 590183798247.dkr.ecr.ap-southeast-2.amazonaws.com/home:latest
+        ports:
+        - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laptop
+  labels:
+    app: laptop
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: laptop
+  template:
+    metadata:
+      labels:
+        app: laptop
+    spec:
+      containers:
+      - name: laptop
+        image: 590183798247.dkr.ecr.ap-southeast-2.amazonaws.com/laptop:latest
+        ports:
+        - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mobile
+  labels:
+    app: mobile
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mobile
+  template:
+    metadata:
+      labels:
+        app: mobile
+    spec:
+      containers:
+      - name: mobile
+        image: 590183798247.dkr.ecr.ap-southeast-2.amazonaws.com/mobile:latest
+        ports:
+        - containerPort: 80
+  
+
+----
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home
+  labels:
+    app: home
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: home
+  template:
+    metadata:
+      labels:
+        app: home
+    spec:
+      containers:
+        - name: home
+          image: 590183798247.dkr.ecr.ap-southeast-2.amazonaws.com/home:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laptop
+  labels:
+    app: laptop
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: laptop
+  template:
+    metadata:
+      labels:
+        app: laptop
+    spec:
+      containers:
+        - name: laptop
+          image: 590183798247.dkr.ecr.ap-southeast-2.amazonaws.com/laptop:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mobile
+  labels:
+    app: mobile
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mobile
+  template:
+    metadata:
+      labels:
+        app: mobile
+    spec:
+      containers:
+        - name: mobile
+          image: 590183798247.dkr.ecr.ap-southeast-2.amazonaws.com/mobile:latest
+          ports:
+            - containerPort: 80
+
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-srv
+spec:
+  selector:
+    app: home
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: laptop-srv
+spec:
+  selector:
+    app: laptop
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8081
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mobile-srv
+spec:
+  selector:
+    app: mobile
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8082
+      targetPort: 80
+
+----------------------
+
+home-srv     ClusterIP   10.100.105.72   <none>        8080/TCP   24s
+laptop-srv   ClusterIP   10.100.71.186   <none>        8081/TCP   24s
+mobile-srv   ClusterIP   10.100.196.35   <none>        8082/TCP   24s
+
+
+kubectl apply -f home-service.yml      
+kubectl apply -f laptop-service.yml      
+kubectl apply -f mobile-service.yml      
+
+for testing
+kubectl run -it ubuntu --image=ubuntu -- bash
+-> apt update && apt install curl -y
+-> home test:
+  curl <cluster-ip for home>:8080
+-> home laptop:  
+  curl <cluster-ip for laptop>:8081/laptop/
+-> home mobile:  
+  curl <cluster-ip for mobile>:8082/mobile/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
